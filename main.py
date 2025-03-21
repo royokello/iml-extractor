@@ -1,12 +1,16 @@
 import os
 import cv2
 import argparse
-import math
+import random
 
-def extract_frames(video_path, output_dir, frames_per_unit=1, time_unit='second', start_count=1):
+def extract_frames(video_path, output_dir, frames_per_unit=1, time_unit='second', 
+                   start_count=1, random_mode=False, random_counter=None):
     """
-    Extract frames from a single video based on the specified number of frames
-    per given time unit (second, minute, or hour).
+    Extract frames from a single video.
+
+    In time-based mode (random_mode is False), it extracts a specified number of frames per
+    given time unit (second, minute, or hour). In random mode (random_mode is True), it randomly
+    selects 'random_counter' frames from the video.
 
     Parameters
     ----------
@@ -15,59 +19,101 @@ def extract_frames(video_path, output_dir, frames_per_unit=1, time_unit='second'
     output_dir : str
         Directory where the extracted frames are saved.
     frames_per_unit : int, optional
-        How many frames to extract per specified time unit. Defaults to 1.
+        Number of frames to extract per time unit (if random_mode is False). Defaults to 1.
     time_unit : {'second', 'minute', 'hour'}, optional
-        The time unit for frames extraction. Defaults to 'second'.
+        Time unit for frame extraction (if random_mode is False). Defaults to 'second'.
     start_count : int, optional
         The starting index for naming the extracted frames. Defaults to 1.
-    """
+    random_mode : bool, optional
+        If True, randomly select frames instead of using time-based intervals. Defaults to False.
+    random_counter : int or None, optional
+        Number of random frames to extract (must be provided if random_mode is True).
 
+    Returns
+    -------
+    int
+        The next image count after extraction.
+    """
     cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if fps <= 0:
-        print(f" ! Skipping {video_path} (cannot read FPS).")
+    if not cap.isOpened():
+        print(f" ! Cannot open video: {video_path}")
         return start_count
 
-    # Determine how many frames (in the video) correspond to one time unit
-    if time_unit.lower() == 'minute':
-        multiplier = 60
-    elif time_unit.lower() == 'hour':
-        multiplier = 3600
-    else:  # default to 'second'
-        multiplier = 1
-
-    # frames_in_one_unit = fps * multiplier
-    # We want to distribute 'frames_per_unit' frames evenly in that many frames
-    # So interval = total_frames_in_one_unit / frames_per_unit
-    frames_in_one_unit = fps * multiplier
-    interval_float = frames_in_one_unit / frames_per_unit
-
-    # Ensure interval is at least 1 to avoid modulo zero or infinite loops
-    interval = max(int(round(interval_float)), 1)
-
-    frame_count = 0
     image_count = start_count
-    success = True
 
-    print(f" * Processing: {video_path} | {frames_per_unit} frame(s) per {time_unit} -> Interval={interval}")
+    if random_mode:
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if total_frames <= 0:
+            print(f" ! Skipping {video_path} (invalid frame count).")
+            cap.release()
+            return image_count
 
-    while success:
-        success, frame = cap.read()
-        if not success:
-            break
+        if random_counter is None:
+            print(" ! Random counter not provided for random mode.")
+            cap.release()
+            return image_count
 
-        # If current frame index is divisible by the interval, save the frame
-        if frame_count % interval == 0:
+        if random_counter > total_frames:
+            print(f" ! random_counter ({random_counter}) is greater than total frames ({total_frames}). Adjusting to total frames.")
+            random_counter = total_frames
+
+        # Randomly sample unique frame indices and sort them for sequential access.
+        random_indices = sorted(random.sample(range(total_frames), random_counter))
+        print(f" * Random mode: Processing {video_path} | Extracting {random_counter} random frames.")
+
+        for frame_index in random_indices:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+            success, frame = cap.read()
+            if not success:
+                print(f" ! Failed to read frame at index {frame_index} in {video_path}")
+                continue
             frame_filename = os.path.join(output_dir, f"{image_count}.jpg")
             cv2.imwrite(frame_filename, frame)
             image_count += 1
 
-        frame_count += 1
+    else:
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if fps <= 0:
+            print(f" ! Skipping {video_path} (cannot read FPS).")
+            cap.release()
+            return image_count
+
+        # Determine the multiplier based on the time unit.
+        if time_unit.lower() == 'minute':
+            multiplier = 60
+        elif time_unit.lower() == 'hour':
+            multiplier = 3600
+        else:  # default to 'second'
+            multiplier = 1
+
+        # Calculate the number of frames in one unit of time.
+        frames_in_one_unit = fps * multiplier
+        # Determine the interval to evenly distribute the frames.
+        interval_float = frames_in_one_unit / frames_per_unit
+        interval = max(int(round(interval_float)), 1)
+
+        print(f" * Processing: {video_path} | {frames_per_unit} frame(s) per {time_unit} -> Interval={interval}")
+
+        frame_count = 0
+        success = True
+
+        while success:
+            success, frame = cap.read()
+            if not success:
+                break
+
+            if frame_count % interval == 0:
+                frame_filename = os.path.join(output_dir, f"{image_count}.jpg")
+                cv2.imwrite(frame_filename, frame)
+                image_count += 1
+
+            frame_count += 1
 
     cap.release()
     return image_count
 
-def walk_directory_and_extract_frames(input_dir, output_dir, frames_per_unit=1, time_unit='second'):
+def walk_directory_and_extract_frames(input_dir, output_dir, frames_per_unit=1, time_unit='second', 
+                                        random_mode=False, random_counter=None):
     """
     Recursively walk through a directory to find video files and extract frames.
 
@@ -78,9 +124,13 @@ def walk_directory_and_extract_frames(input_dir, output_dir, frames_per_unit=1, 
     output_dir : str
         Directory to save extracted frames.
     frames_per_unit : int, optional
-        How many frames to extract per specified time unit. Defaults to 1.
+        Number of frames to extract per time unit (if random_mode is False). Defaults to 1.
     time_unit : {'second', 'minute', 'hour'}, optional
-        The time unit for frames extraction. Defaults to 'second'.
+        Time unit for frame extraction (if random_mode is False). Defaults to 'second'.
+    random_mode : bool, optional
+        If True, extract frames randomly. Defaults to False.
+    random_counter : int or None, optional
+        Number of random frames to extract (must be provided if random_mode is True).
     """
     image_count = 1
     for root, dirs, files in os.walk(input_dir):
@@ -92,12 +142,14 @@ def walk_directory_and_extract_frames(input_dir, output_dir, frames_per_unit=1, 
                     output_dir,
                     frames_per_unit=frames_per_unit,
                     time_unit=time_unit,
-                    start_count=image_count
+                    start_count=image_count,
+                    random_mode=random_mode,
+                    random_counter=random_counter
                 )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Extract a certain number of frames per time unit from videos."
+        description="Extract frames from videos either at a specific rate per time unit or randomly."
     )
     parser.add_argument(
         "-i", "--input",
@@ -119,21 +171,37 @@ if __name__ == "__main__":
         "-t", "--time",
         choices=["second", "minute", "hour"],
         default="second",
-        help="Time unit for frames extraction (default: 'second')."
+        help="Time unit for frame extraction (default: 'second')."
+    )
+    parser.add_argument(
+        "--random",
+        action="store_true",
+        help="If set, extract frames randomly instead of at fixed intervals."
+    )
+    parser.add_argument(
+        "--random_counter",
+        type=int,
+        help="Number of random frames to extract (required if --random is set)."
     )
 
     args = parser.parse_args()
+
+    if args.random and args.random_counter is None:
+        parser.error("--random requires --random_counter to be provided.")
 
     input_directory = args.input
     output_directory = args.output
     frames_per_unit = args.frames
     time_unit = args.time
+    random_mode = args.random
+    random_counter = args.random_counter
 
     os.makedirs(output_directory, exist_ok=True)
     walk_directory_and_extract_frames(
-        input_directory, 
-        output_directory, 
-        frames_per_unit=frames_per_unit, 
-        time_unit=time_unit
+        input_directory,
+        output_directory,
+        frames_per_unit=frames_per_unit,
+        time_unit=time_unit,
+        random_mode=random_mode,
+        random_counter=random_counter
     )
-
