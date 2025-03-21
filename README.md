@@ -1,11 +1,17 @@
 # IML Extractor
 
-This Python script allows you to extract frames from videos in two modes:
+This Python script extracts frames from videos in two primary modes:
 
-- **Time-based extraction**: Extract a specified number of frames per given time unit (second, minute, or hour).  
-  *Defaults*: 1 frame per second (`-f 1 -t second`).
+- **Time-based extraction:** Extract a specified number of frames per time unit (second, minute, or hour).  
+  *Defaults:* 1 frame per second (`-f 1 -t second`).
 
-- **Random extraction**: Randomly extract a given number of frames from each video. When using random mode, you must provide the `--random_counter` argument.
+- **Random extraction:** Randomly extract a given number of frames from each video.  
+  *Usage:* Enable with `--random` and specify the number with `--random_counter`.
+
+Additionally, you can choose how the extracted images are organized:
+
+- **Collate mode (`--collate` flag):** All images from all videos are stored directly in the output directory.
+- **Default mode:** A subdirectory is created for each video (named after the video) to store its frames.
 
 ## Table of Contents
 
@@ -22,10 +28,10 @@ This Python script allows you to extract frames from videos in two modes:
 
 ## Features
 
-- **Time-based frame extraction**: Specify frames per second, minute, or hour.
-- **Random frame extraction**: Randomly select a specified number of frames from each video.
-- **Batch processing**: Processes all video files within an input directory (including subdirectories).
-- Automatically creates the output directory if it doesn’t exist.
+- **Time-based frame extraction:** Specify frames per second, minute, or hour.
+- **Random frame extraction:** Randomly select a specified number of frames from each video.
+- **Collation options:** Either collate all extracted frames into one directory or organize them into subdirectories by video.
+- **Batch processing:** Processes all video files within an input directory (including subdirectories).
 - Supports popular video formats: `.mp4`, `.avi`, `.mov`, `.mkv`.
 
 ---
@@ -52,14 +58,15 @@ pip install opencv-python
 ## Usage
 
 ```bash
-python extract_frames.py -i <input_directory> -o <output_directory> -f <frames> -t <time> [--random] [--random_counter <number>]
+python extract_frames.py -i <input_directory> -o <output_directory> -f <frames> -t <time> [--random] [--random_counter <number>] [--collate]
 ```
 
 **Notes:**
-- The `-f`/`--frames` flag specifies the number of frames to extract per time unit when not in random mode (default: `1`).
+- The `-f`/`--frames` flag specifies the number of frames to extract per time unit when in time-based mode (default: `1`).
 - The `-t`/`--time` flag specifies the time unit for extraction. Options: `second`, `minute`, or `hour` (default: `second`).
-- The `--random` flag enables random frame extraction.
+- The `--random` flag enables random extraction mode.
 - When `--random` is set, you **must** provide `--random_counter` to specify how many random frames to extract per video.
+- The `--collate` flag, when set, stores all images directly into the output directory. When not set, a subdirectory is created for each video using its name.
 
 ---
 
@@ -67,53 +74,60 @@ python extract_frames.py -i <input_directory> -o <output_directory> -f <frames> 
 
 | **Option**              | **Description**                                                                                                                                      | **Default**     |
 |-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|
-| `-i, --input`           | **Required.** Directory containing videos. Recursively searches subdirectories for video files.                                                     | *None*          |
+| `-i, --input`           | **Required.** Directory containing videos (searched recursively).                                                                                  | *None*          |
 | `-o, --output`          | **Required.** Directory where the extracted frames will be saved.                                                                                  | *None*          |
 | `-f, --frames`          | Number of frames to extract per specified time unit (used in time-based mode).                                                                        | `1`             |
 | `-t, --time`            | Time unit for frame extraction. Options: `second`, `minute`, or `hour`.                                                                              | `second`        |
 | `--random`              | If set, extracts frames randomly instead of using fixed intervals.                                                                                 | `False`         |
 | `--random_counter`      | Number of random frames to extract from each video (required if `--random` is set).                                                                    | *None*          |
+| `--collate`             | If set, all images are saved directly into the output directory. If not set, a subdirectory is created for each video (named after the video).      | `False`         |
 
 ---
 
 ## Examples
 
-1. **Time-based extraction** (default: 1 frame per second):
+1. **Time-based extraction (default):** Extract 1 frame per second with separate folders per video.
     ```bash
     python extract_frames.py -i my_videos -o frames_output
     ```
-2. **Extract 2 frames per second**:
+2. **Extract 2 frames per second** with separate subdirectories:
     ```bash
     python extract_frames.py -i my_videos -o frames_output -f 2 -t second
     ```
-3. **Extract 1 frame per minute**:
-    ```bash
-    python extract_frames.py -i my_videos -o frames_output -f 1 -t minute
-    ```
-4. **Random frame extraction**: Extract 5 random frames per video:
+3. **Random extraction:** Extract 5 random frames per video into separate folders:
     ```bash
     python extract_frames.py -i my_videos -o frames_output --random --random_counter 5
+    ```
+4. **Collated extraction:** Extract 1 frame per minute and store all images in the same output directory:
+    ```bash
+    python extract_frames.py -i my_videos -o frames_output -f 1 -t minute --collate
     ```
 
 ---
 
 ## How It Works
 
-1. **Directory Scanning**:  
-   The script recursively scans the specified input directory for video files with extensions `.mp4`, `.avi`, `.mov`, or `.mkv`.
+1. **Directory Scanning:**  
+   The script recursively searches the input directory for video files with extensions `.mp4`, `.avi`, `.mov`, or `.mkv`.
 
-2. **Frame Extraction Modes**:
-   - **Time-based Mode**:  
-     - Retrieves the video’s frames per second (FPS) using OpenCV.
-     - Calculates the total number of frames in the chosen time unit (using a multiplier of 1 for seconds, 60 for minutes, or 3600 for hours).
-     - Computes an interval so that the specified number of frames is evenly extracted.
-   - **Random Mode**:  
-     - Obtains the total frame count for the video.
-     - Randomly selects the specified number of frame indices (ensuring they are unique) and sorts them.
-     - Seeks to each frame index to extract and save the frame.
+2. **Output Organization:**
+   - **Collate Mode (`--collate`):**  
+     All extracted frames from all videos are stored in the specified output directory using a global counter.
+   - **Default Mode:**  
+     For each video, a subdirectory (named after the video file, without extension) is created inside the output directory, and frame numbering starts from 1 for each video.
 
-3. **Saving Frames**:  
-   Extracted frames are saved sequentially (named using a running counter) in the designated output directory.
+3. **Frame Extraction Modes:**
+   - **Time-based Mode:**  
+     - Reads the video’s frames per second (FPS) using OpenCV.
+     - Calculates the total number of frames in the specified time unit.
+     - Computes an interval to evenly distribute the extraction of the specified number of frames.
+   - **Random Mode:**  
+     - Retrieves the total frame count.
+     - Randomly selects the specified number of unique frame indices (sorted for efficient reading).
+     - Seeks to each selected frame index to extract and save the frame.
+
+4. **Saving Frames:**  
+   Extracted frames are saved as `.jpg` files. Their names are sequential numbers, either global (in collated mode) or local to each video’s subdirectory.
 
 ---
 
@@ -124,4 +138,4 @@ This script is released under the [MIT License](https://opensource.org/licenses/
 ---
 
 **Happy extracting!**  
-If you have any suggestions or encounter issues, please open an issue or submit a pull request.
+If you have suggestions or encounter issues, please open an issue or submit a pull request.

@@ -113,7 +113,7 @@ def extract_frames(video_path, output_dir, frames_per_unit=1, time_unit='second'
     return image_count
 
 def walk_directory_and_extract_frames(input_dir, output_dir, frames_per_unit=1, time_unit='second', 
-                                        random_mode=False, random_counter=None):
+                                        random_mode=False, random_counter=None, collate=False):
     """
     Recursively walk through a directory to find video files and extract frames.
 
@@ -130,16 +130,30 @@ def walk_directory_and_extract_frames(input_dir, output_dir, frames_per_unit=1, 
     random_mode : bool, optional
         If True, extract frames randomly. Defaults to False.
     random_counter : int or None, optional
-        Number of random frames to extract (must be provided if random_mode is True).
+        Number of random frames to extract (required if random_mode is True).
+    collate : bool, optional
+        If True, all images are saved directly in the output directory. If False (default), a subdirectory 
+        with the video's name is created inside the output directory to store that video's frames.
     """
-    image_count = 1
+    # Global image counter for collated output.
+    global_image_count = 1
     for root, dirs, files in os.walk(input_dir):
         for file in files:
             if file.lower().endswith(('.mp4', '.avi', '.mov', '.mkv')):
                 video_path = os.path.join(root, file)
-                image_count = extract_frames(
+                if collate:
+                    video_output_dir = output_dir
+                    image_count = global_image_count
+                else:
+                    # Create a subdirectory named after the video (without its extension)
+                    video_name = os.path.splitext(file)[0]
+                    video_output_dir = os.path.join(output_dir, video_name)
+                    os.makedirs(video_output_dir, exist_ok=True)
+                    image_count = 1
+
+                new_count = extract_frames(
                     video_path,
-                    output_dir,
+                    video_output_dir,
                     frames_per_unit=frames_per_unit,
                     time_unit=time_unit,
                     start_count=image_count,
@@ -147,9 +161,13 @@ def walk_directory_and_extract_frames(input_dir, output_dir, frames_per_unit=1, 
                     random_counter=random_counter
                 )
 
+                if collate:
+                    global_image_count = new_count
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Extract frames from videos either at a specific rate per time unit or randomly."
+        description="Extract frames from videos either at a specific rate per time unit or randomly. " +
+                    "Optionally collate all frames into one output directory or create subdirectories per video."
     )
     parser.add_argument(
         "-i", "--input",
@@ -176,12 +194,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--random",
         action="store_true",
-        help="If set, extract frames randomly instead of at fixed intervals."
+        help="If set, extracts frames randomly instead of at fixed intervals."
     )
     parser.add_argument(
         "--random_counter",
         type=int,
-        help="Number of random frames to extract (required if --random is set)."
+        help="Number of random frames to extract from each video (required if --random is set)."
+    )
+    parser.add_argument(
+        "--collate",
+        action="store_true",
+        help="If set, all images are saved directly into the output directory. " +
+             "If not set (default), a subdirectory is created for each video."
     )
 
     args = parser.parse_args()
@@ -195,6 +219,7 @@ if __name__ == "__main__":
     time_unit = args.time
     random_mode = args.random
     random_counter = args.random_counter
+    collate = args.collate
 
     os.makedirs(output_directory, exist_ok=True)
     walk_directory_and_extract_frames(
@@ -203,5 +228,6 @@ if __name__ == "__main__":
         frames_per_unit=frames_per_unit,
         time_unit=time_unit,
         random_mode=random_mode,
-        random_counter=random_counter
+        random_counter=random_counter,
+        collate=collate
     )
