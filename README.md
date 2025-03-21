@@ -1,6 +1,6 @@
 # IML Extractor
 
-This Python script extracts frames from videos in two primary modes:
+This Python script extracts frames from videos with two primary extraction modes:
 
 - **Time-based extraction:** Extract a specified number of frames per time unit (second, minute, or hour).  
   *Defaults:* 1 frame per second (`-f 1 -t second`).
@@ -12,6 +12,10 @@ Additionally, you can choose how the extracted images are organized:
 
 - **Collate mode (`--collate` flag):** All images from all videos are stored directly in the output directory.
 - **Default mode:** A subdirectory is created for each video (named after the video) to store its frames.
+
+**Note:** All extracted frames are saved as PNG files for lossless quality.
+
+---
 
 ## Table of Contents
 
@@ -32,7 +36,7 @@ Additionally, you can choose how the extracted images are organized:
 - **Random frame extraction:** Randomly select a specified number of frames from each video.
 - **Collation options:** Either collate all extracted frames into one directory or organize them into subdirectories by video.
 - **Batch processing:** Processes all video files within an input directory (including subdirectories).
-- Supports popular video formats: `.mp4`, `.avi`, `.mov`, `.mkv`.
+- **PNG output:** Uses lossless PNG format for extracted frames, preserving image quality.
 
 ---
 
@@ -62,11 +66,11 @@ python extract_frames.py -i <input_directory> -o <output_directory> -f <frames> 
 ```
 
 **Notes:**
-- The `-f`/`--frames` flag specifies the number of frames to extract per time unit when in time-based mode (default: `1`).
+- The `-f`/`--frames` flag specifies the number of frames to extract per time unit in time-based mode (default: `1`).
 - The `-t`/`--time` flag specifies the time unit for extraction. Options: `second`, `minute`, or `hour` (default: `second`).
 - The `--random` flag enables random extraction mode.
 - When `--random` is set, you **must** provide `--random_counter` to specify how many random frames to extract per video.
-- The `--collate` flag, when set, stores all images directly into the output directory. When not set, a subdirectory is created for each video using its name.
+- The `--collate` flag, when set, stores all images directly in the output directory. When not set, a subdirectory is created for each video using its name.
 
 ---
 
@@ -127,7 +131,7 @@ python extract_frames.py -i <input_directory> -o <output_directory> -f <frames> 
      - Seeks to each selected frame index to extract and save the frame.
 
 4. **Saving Frames:**  
-   Extracted frames are saved as `.jpg` files. Their names are sequential numbers, either global (in collated mode) or local to each video’s subdirectory.
+   Extracted frames are saved as PNG files, ensuring lossless quality. Their filenames are sequential numbers, either global (in collated mode) or local to each video’s subdirectory.
 
 ---
 
@@ -138,4 +142,4 @@ This script is released under the [MIT License](https://opensource.org/licenses/
 ---
 
 **Happy extracting!**  
-If you have suggestions or encounter issues, please open an issue or submit a pull request.
+If you have any suggestions or encounter issues, please open an issue or submit a pull request.

@@ -67,7 +67,7 @@ def extract_frames(video_path, output_dir, frames_per_unit=1, time_unit='second'
             if not success:
                 print(f" ! Failed to read frame at index {frame_index} in {video_path}")
                 continue
-            frame_filename = os.path.join(output_dir, f"{image_count}.jpg")
+            frame_filename = os.path.join(output_dir, f"{image_count}.png")
             cv2.imwrite(frame_filename, frame)
             image_count += 1
 
@@ -103,7 +103,7 @@ def extract_frames(video_path, output_dir, frames_per_unit=1, time_unit='second'
                 break
 
             if frame_count % interval == 0:
-                frame_filename = os.path.join(output_dir, f"{image_count}.jpg")
+                frame_filename = os.path.join(output_dir, f"{image_count}.png")
                 cv2.imwrite(frame_filename, frame)
                 image_count += 1
 
@@ -132,7 +132,7 @@ def walk_directory_and_extract_frames(input_dir, output_dir, frames_per_unit=1, 
     random_counter : int or None, optional
         Number of random frames to extract (required if random_mode is True).
     collate : bool, optional
-        If True, all images are saved directly in the output directory. If False (default), a subdirectory 
+        If True, all images are saved directly into the output directory. If False (default), a subdirectory 
         with the video's name is created inside the output directory to store that video's frames.
     """
     # Global image counter for collated output.
